@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .file-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Certificate Upload Test</h2>
+        <p>Test करें कि certificate upload properly काम कर रहा है या नहीं।</p>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="donor_id">Donor ID:</label>
+                <input type="text" id="donor_id" name="donor_id" value="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="librarian_id">Librarian ID:</label>
+                <input type="text" id="librarian_id" name="librarian_id" value="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="certificate">Certificate File:</label>
+                <input type="file" id="certificate" name="certificate" accept="image/*" required>
+                <div class="file-info">
+                    Supported formats: JPEG, JPG, PNG, GIF, BMP, IMG, WEBP (Max: 8MB)
+                </div>
+            </div>
+            
+            <button type="submit">Upload Certificate</button>
+        </form>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const resultDiv = document.getElementById('result');
+            
+            // Show loading message
+            resultDiv.className = 'result';
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Uploading...';
+            
+            fetch('upload_certificate.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>Success!</strong> ${data.message}<br>
+                        <strong>File ID:</strong> ${data.data.file_id}<br>
+                        <strong>File Path:</strong> ${data.data.file_path}<br>
+                        <strong>File Size:</strong> ${(data.data.file_size / 1024).toFixed(2)} KB<br>
+                        <strong>File Type:</strong> ${data.data.file_type}
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${data.message}`;
+                }
+            })
+            .catch(error => {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Network Error:</strong> ${error.message}`;
+            });
+        });
+
+        // File size validation
+        document.getElementById('certificate').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const maxSize = 8 * 1024 * 1024; // 8MB
+                if (file.size > maxSize) {
+                    alert('File size too large. Maximum 8MB allowed.');
+                    this.value = '';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
