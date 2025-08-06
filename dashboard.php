@@ -14,87 +14,57 @@ $database = new Database();
 $db = $database->getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $librarian_id = isset($_GET['librarian_id']) ? $_GET['librarian_id'] : null;
+    // Remove librarian_id dependency - show unified stats for all users
     
     try {
         $stats = [];
         
-        // Total donors
+        // Total donors (all donors in the system)
         $donorQuery = "SELECT COUNT(*) as total_donors FROM donors";
-        if ($librarian_id) {
-            $donorQuery .= " WHERE ul_id = :librarian_id";
-        }
         $donorStmt = $db->prepare($donorQuery);
-        if ($librarian_id) {
-            $donorStmt->bindParam(':librarian_id', $librarian_id);
-        }
         $donorStmt->execute();
         $stats['total_donors'] = (int)($donorStmt->fetch()['total_donors'] ?: 0);
         
-        // Total books
+        // Total books (all books in the system)
         $bookQuery = "SELECT COUNT(*) as total_books, COALESCE(SUM(b_count), 0) as total_copies FROM books";
-        if ($librarian_id) {
-            $bookQuery .= " WHERE bl_id = :librarian_id";
-        }
         $bookStmt = $db->prepare($bookQuery);
-        if ($librarian_id) {
-            $bookStmt->bindParam(':librarian_id', $librarian_id);
-        }
         $bookStmt->execute();
         $bookData = $bookStmt->fetch();
         $stats['total_books'] = (int)($bookData['total_books'] ?: 0);
         $stats['total_copies'] = (int)($bookData['total_copies'] ?: 0);
         
-        // Total donations
+        // Total donations (all donations in the system)
         $donationQuery = "SELECT COUNT(*) as total_donations, COALESCE(SUM(d_count), 0) as total_donated_copies FROM donations";
-        if ($librarian_id) {
-            $donationQuery .= " WHERE dl_id = :librarian_id";
-        }
         $donationStmt = $db->prepare($donationQuery);
-        if ($librarian_id) {
-            $donationStmt->bindParam(':librarian_id', $librarian_id);
-        }
         $donationStmt->execute();
         $donationData = $donationStmt->fetch();
         $stats['total_donations'] = (int)($donationData['total_donations'] ?: 0);
         $stats['total_donated_copies'] = (int)($donationData['total_donated_copies'] ?: 0);
         
-        // Recent donations (last 10)
+        // Recent donations (last 10 - all recent donations in the system)
         $recentQuery = "SELECT d.d_id, d.d_count, d.d_createdat, 
                               u.u_name, u.u_mobile,
                               b.b_title, b.b_author
                        FROM donations d
                        JOIN donors u ON d.du_id = u.u_id
-                       JOIN books b ON d.db_id = b.b_id";
-        if ($librarian_id) {
-            $recentQuery .= " WHERE d.dl_id = :librarian_id";
-        }
-        $recentQuery .= " ORDER BY d.d_createdat DESC LIMIT 10";
+                       JOIN books b ON d.db_id = b.b_id
+                       ORDER BY d.d_createdat DESC LIMIT 10";
         
         $recentStmt = $db->prepare($recentQuery);
-        if ($librarian_id) {
-            $recentStmt->bindParam(':librarian_id', $librarian_id);
-        }
         $recentStmt->execute();
         $stats['recent_donations'] = $recentStmt->fetchAll();
         
-        // Monthly donation count (last 12 months)
+        // Monthly donation count (last 12 months - all donations in the system)
         $monthlyQuery = "SELECT 
                            DATE_FORMAT(d_createdat, '%Y-%m') as month,
                            COUNT(*) as donations_count,
                            SUM(d_count) as copies_count
                          FROM donations
-                         WHERE d_createdat >= DATE_SUB(NOW(), INTERVAL 12 MONTH)";
-        if ($librarian_id) {
-            $monthlyQuery .= " AND dl_id = :librarian_id";
-        }
-        $monthlyQuery .= " GROUP BY DATE_FORMAT(d_createdat, '%Y-%m')
-                          ORDER BY month DESC";
+                         WHERE d_createdat >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                         GROUP BY DATE_FORMAT(d_createdat, '%Y-%m')
+                         ORDER BY month DESC";
         
         $monthlyStmt = $db->prepare($monthlyQuery);
-        if ($librarian_id) {
-            $monthlyStmt->bindParam(':librarian_id', $librarian_id);
-        }
         $monthlyStmt->execute();
         $stats['monthly_donations'] = $monthlyStmt->fetchAll();
         
